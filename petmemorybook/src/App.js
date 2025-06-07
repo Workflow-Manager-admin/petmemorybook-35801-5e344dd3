@@ -9,22 +9,128 @@ import './App.css';
  * We'll apply with inline and extra CSS where needed, on top of template's base CSS.
  */
 
-// PUBLIC_INTERFACE
+/**
+ * Enhancements for PetMemoryBook:
+ * - Functional "Add Memory": form opens, memory is saved with date, description, and multi-photo upload.
+ * - Enable file/photo upload and preview for Photos and Add Memory.
+ */
+
 function App() {
   // Track nav state and profile image upload (stub for now)
   const [route, setRoute] = useState("home");
   const [petProfileUrl, setPetProfileUrl] = useState(null);
 
+  // Timeline (memories)
+  const [memories, setMemories] = useState([]); // {date, text, photos: [base64]}
+  const [addMemoryOpen, setAddMemoryOpen] = useState(false);
+  const [memoryForm, setMemoryForm] = useState({
+    date: "",
+    text: "",
+    files: [],
+    previews: [],
+  });
+
+  // Photos (global uploaded images)
+  const [photos, setPhotos] = useState([]);
+
   // Handler for fake navigation (no router)
   const go = (nav) => setRoute(nav);
 
-  // Pet profile image upload (base64 preview)
+  // Profile image
   const onProfilePicChange = e => {
     if (e.target.files && e.target.files[0]) {
       const reader = new FileReader();
       reader.onload = evt => setPetProfileUrl(evt.target.result);
       reader.readAsDataURL(e.target.files[0]);
     }
+  };
+
+  // Utility: preview multiple images as dataURL
+  function filesToDataURLs(fileList, cb) {
+    if (!fileList || fileList.length === 0) cb([]);
+    let left = fileList.length;
+    const arr = [];
+    Array.from(fileList).forEach((file, i) => {
+      const reader = new FileReader();
+      reader.onload = e => {
+        arr[i] = e.target.result;
+        left--;
+        if (left === 0) cb(arr);
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // Handle Add Memory open/close
+  const handleAddMemoryClick = () => {
+    setAddMemoryOpen(true);
+    setMemoryForm({
+      date: "",
+      text: "",
+      files: [],
+      previews: [],
+    });
+  };
+
+  const handleMemoryFormChange = e => {
+    const { name, value } = e.target;
+    setMemoryForm(mem => ({ ...mem, [name]: value }));
+  };
+
+  // File input for Add Memory
+  const handleMemoryFilesChange = e => {
+    const files = Array.from(e.target.files);
+    setMemoryForm(mem => ({ ...mem, files, previews: [] }));
+    filesToDataURLs(files, (previews) =>
+      setMemoryForm(mem => ({ ...mem, previews }))
+    );
+  };
+
+  // Submit new memory
+  const handleAddMemorySubmit = e => {
+    e.preventDefault();
+    if (!memoryForm.date || !memoryForm.text) return;
+    setMemories(mems =>
+      [
+        ...mems,
+        {
+          date: memoryForm.date,
+          text: memoryForm.text,
+          photos: memoryForm.previews
+        }
+      ].sort((a, b) => (a.date < b.date ? -1 : 1))
+    );
+    // Add to global photos
+    setPhotos(photosArr => ([
+      ...photosArr,
+      ...memoryForm.previews.map(img => ({
+        src: img,
+        key: Math.random().toString(36).slice(2)
+      }))
+    ]));
+    setAddMemoryOpen(false);
+    setMemoryForm({
+      date: "",
+      text: "",
+      files: [],
+      previews: [],
+    });
+  };
+
+  // Photos upload (separate from Add Memory)
+  const handlePhotosInputChange = (e) => {
+    const files = Array.from(e.target.files);
+    filesToDataURLs(files, (previews) => {
+      setPhotos(arr =>
+        [
+          ...arr,
+          ...previews.map(img => ({
+            src: img,
+            key: Math.random().toString(36).slice(2)
+          }))
+        ]
+      );
+    });
   };
 
   // Nav structure
@@ -37,7 +143,7 @@ function App() {
     { key: "share", label: "Share" }
   ];
 
-  // Main content stubs by section
+  // Main content (with new interactive features)
   function renderMain() {
     switch(route) {
       case "home":
@@ -88,15 +194,106 @@ function App() {
             <div className="petbook-section-description">
               All your added memories in chronological order. Add your first memory below!
             </div>
+
             <div className="petbook-timeline-placeholder">
-              {/* Add Memory Button Stub */}
-              <button className="btn petbook-btn-accent" style={{ marginBottom: 16 }}>
-                + Add Memory
-              </button>
-              {/* Timeline List Placeholder */}
-              <div className="petbook-timeline-empty">
-                <span style={{color: "#999"}}>No memories yet. Your story begins here!</span>
-              </div>
+              {/* Add Memory Button */}
+              {!addMemoryOpen && (
+                <button className="btn petbook-btn-accent" style={{ marginBottom: 16 }} onClick={handleAddMemoryClick}>
+                  + Add Memory
+                </button>
+              )}
+
+              {/* Add Memory Form */}
+              {addMemoryOpen && (
+                <form onSubmit={handleAddMemorySubmit} style={{
+                  background: "#fff8f7", border: "1.5px solid #F67280",
+                  borderRadius: 8, padding: 18, marginBottom: 18, maxWidth: 420
+                }}>
+                  <div style={{ marginBottom: 10 }}>
+                    <label>Date:<br/>
+                      <input
+                        type="date"
+                        name="date"
+                        value={memoryForm.date}
+                        onChange={handleMemoryFormChange}
+                        required
+                        style={{ width: "100%", padding: 6, borderRadius: 3, border: "1px solid #DFB8A9" }}
+                      /></label>
+                  </div>
+                  <div style={{ marginBottom: 10 }}>
+                    <label>Description:<br/>
+                      <textarea
+                        name="text"
+                        value={memoryForm.text}
+                        onChange={handleMemoryFormChange}
+                        rows={3}
+                        required
+                        style={{ width: "100%", padding: 6, resize: "vertical", borderRadius: 3, border: "1px solid #DFB8A9" }}
+                        placeholder="Share your memory..."
+                      ></textarea>
+                    </label>
+                  </div>
+                  <div style={{ marginBottom: 10 }}>
+                    <label>
+                      Photos: <br/>
+                      <input
+                        type="file"
+                        multiple
+                        accept="image/*"
+                        onChange={handleMemoryFilesChange}
+                        style={{ marginTop: 5 }}
+                      />
+                    </label>
+                    <div style={{ display: "flex", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
+                      {memoryForm.previews.map((src, i) => (
+                        <img key={i} src={src} style={{
+                          width: 56, height: 56, objectFit: "cover", borderRadius: 8, border: "1px solid #eee"
+                        }} alt={"preview"}/>
+                      ))}
+                    </div>
+                  </div>
+                  <button type="submit" className="btn petbook-btn-accent" style={{ marginRight: 10 }}>Add</button>
+                  <button type="button" className="btn petbook-btn-secondary"
+                    onClick={() => setAddMemoryOpen(false)}>Cancel</button>
+                </form>
+              )}
+
+              {/* Timeline Memories */}
+              {memories.length === 0 ? (
+                <div className="petbook-timeline-empty">
+                  <span style={{color: "#999"}}>No memories yet. Your story begins here!</span>
+                </div>
+              ) : (
+                <div>
+                  {[...memories].sort((a, b) => (a.date > b.date ? 1 : -1)).map((mem, idx) => (
+                    <div key={mem.date + '-' + idx}
+                      style={{
+                        background: "#fff",
+                        border: "1.2px solid #e6d0c6",
+                        borderRadius: 8,
+                        padding: "14px 18px",
+                        marginBottom: 18,
+                        boxShadow: "0 2px 12px 0 #f7c6bd11"
+                      }}>
+                      <div style={{fontWeight: 600, color: "#F67280", marginBottom: 4}}>
+                        {mem.date}
+                      </div>
+                      <div style={{marginBottom: 6, color: "#975c3f"}}>
+                        {mem.text}
+                      </div>
+                      {mem.photos && mem.photos.length > 0 &&
+                        <div style={{ display: "flex", gap: 8, marginTop: 4, flexWrap: "wrap" }}>
+                          {mem.photos.map((src, i) => (
+                            <img key={i} src={src} alt={"memory-pic"} style={{
+                              width: 56, height: 56, objectFit: "cover", borderRadius: 8, border: "1px solid #eee"
+                            }}/>
+                          ))}
+                        </div>
+                      }
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </section>
         );
@@ -108,9 +305,27 @@ function App() {
               Upload and view your pet's favorite photos. All your photos appear in the scrapbook.
             </div>
             <div className="petbook-photos-placeholder">
-              <input type="file" accept="image/*" multiple disabled
-                style={{ margin: "16px 0" }} title="Feature stub - coming soon" />
-              <span style={{color: "#999"}}>Photo gallery feature coming soon.</span>
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handlePhotosInputChange}
+                style={{ margin: "16px 0" }}
+                title="Choose photos to upload"
+              />
+              <div style={{display: "flex", flexWrap:"wrap", gap: 10}}>
+                {photos.length === 0 && (
+                  <span style={{color: "#999", marginTop: 8}}>No photos uploaded yet.</span>
+                )}
+                {photos.map(photo =>
+                  <img key={photo.key} src={photo.src} alt="user-upload"
+                    style={{
+                      width: 90, height: 90, objectFit: "cover", borderRadius: '8px',
+                      border: "1px solid #eee", background: "#f8f8f8"
+                    }}
+                  />
+                )}
+              </div>
             </div>
           </section>
         );
