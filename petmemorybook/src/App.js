@@ -33,6 +33,15 @@ function App() {
   // Photos (global uploaded images)
   const [photos, setPhotos] = useState([]);
 
+  // Milestones state
+  const [milestones, setMilestones] = useState([]); // {type, description, date}
+  const [addMilestoneOpen, setAddMilestoneOpen] = useState(false);
+  const [milestoneForm, setMilestoneForm] = useState({
+    type: "",
+    description: "",
+    date: "",
+  });
+
   // Handler for fake navigation (no router)
   const go = (nav) => setRoute(nav);
 
@@ -130,6 +139,50 @@ function App() {
           }))
         ]
       );
+    });
+  };
+
+  // PUBLIC_INTERFACE
+  // Open Add Milestone form
+  const handleAddMilestoneClick = () => {
+    setAddMilestoneOpen(true);
+    setMilestoneForm({
+      type: "",
+      description: "",
+      date: "",
+    });
+  };
+
+  // PUBLIC_INTERFACE
+  // Handle form changes for Milestone
+  const handleMilestoneFormChange = (e) => {
+    const { name, value } = e.target;
+    setMilestoneForm(form => ({
+      ...form,
+      [name]: value
+    }));
+  };
+
+  // PUBLIC_INTERFACE
+  // Submit a new milestone
+  const handleAddMilestoneSubmit = (e) => {
+    e.preventDefault();
+    if (!milestoneForm.type || !milestoneForm.description || !milestoneForm.date) return;
+    setMilestones(mils =>
+      [
+        ...mils,
+        {
+          type: milestoneForm.type,
+          description: milestoneForm.description,
+          date: milestoneForm.date
+        }
+      ].sort((a, b) => (a.date < b.date ? -1 : 1))
+    );
+    setAddMilestoneOpen(false);
+    setMilestoneForm({
+      type: "",
+      description: "",
+      date: "",
     });
   };
 
@@ -337,10 +390,142 @@ function App() {
               Celebrate important moments in your pet’s life: birthdays, adoption days, more.
             </div>
             <div className="petbook-milestones-placeholder">
-              <button className="btn petbook-btn-secondary" style={{ marginBottom: 16 }}>
-                + Add Milestone
-              </button>
-              <span style={{color: "#999"}}>No milestones yet. Add your first one!</span>
+              {/* Add Milestone Button */}
+              {!addMilestoneOpen && (
+                <button
+                  className="btn petbook-btn-secondary"
+                  style={{ marginBottom: 16 }}
+                  onClick={handleAddMilestoneClick}
+                >
+                  + Add Milestone
+                </button>
+              )}
+
+              {/* Add Milestone Form */}
+              {addMilestoneOpen && (
+                <form
+                  onSubmit={handleAddMilestoneSubmit}
+                  style={{
+                    background: "#f8fbff",
+                    border: "1.5px solid #A1C6EA",
+                    borderRadius: 8,
+                    padding: 18,
+                    marginBottom: 18,
+                    maxWidth: 420,
+                  }}
+                >
+                  <div style={{ marginBottom: 10 }}>
+                    <label>
+                      Date:<br />
+                      <input
+                        type="date"
+                        name="date"
+                        value={milestoneForm.date}
+                        onChange={handleMilestoneFormChange}
+                        required
+                        style={{
+                          width: "100%",
+                          padding: 6,
+                          borderRadius: 3,
+                          border: "1px solid #A1C6EA",
+                        }}
+                      />
+                    </label>
+                  </div>
+                  <div style={{ marginBottom: 10 }}>
+                    <label>
+                      Milestone Type:
+                      <select
+                        name="type"
+                        value={milestoneForm.type}
+                        onChange={handleMilestoneFormChange}
+                        required
+                        style={{
+                          width: "100%",
+                          padding: 6,
+                          borderRadius: 3,
+                          border: "1px solid #A1C6EA",
+                          marginTop: 3,
+                        }}
+                      >
+                        <option value="">-- Select --</option>
+                        <option value="Birthday">Birthday</option>
+                        <option value="Adoption">Adoption Day</option>
+                        <option value="Anniversary">Anniversary</option>
+                        <option value="First Walk">First Walk</option>
+                        <option value="Achievement">Major Achievement</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </label>
+                  </div>
+                  <div style={{ marginBottom: 10 }}>
+                    <label>
+                      Description:<br />
+                      <textarea
+                        name="description"
+                        value={milestoneForm.description}
+                        onChange={handleMilestoneFormChange}
+                        rows={2}
+                        required
+                        style={{
+                          width: "100%",
+                          padding: 6,
+                          resize: "vertical",
+                          borderRadius: 3,
+                          border: "1px solid #A1C6EA",
+                        }}
+                        placeholder="Describe this special milestone..."
+                      ></textarea>
+                    </label>
+                  </div>
+                  <button
+                    type="submit"
+                    className="btn petbook-btn-secondary"
+                    style={{ marginRight: 10 }}
+                  >
+                    Add
+                  </button>
+                  <button
+                    type="button"
+                    className="btn petbook-btn-accent"
+                    onClick={() => setAddMilestoneOpen(false)}
+                  >
+                    Cancel
+                  </button>
+                </form>
+              )}
+
+              {/* Milestone Entries */}
+              {milestones.length === 0 ? (
+                <span style={{ color: "#999" }}>
+                  No milestones yet. Add your first one!
+                </span>
+              ) : (
+                <div>
+                  {[...milestones].sort((a, b) =>
+                    a.date > b.date ? 1 : -1
+                  ).map((ms, idx) => (
+                    <div
+                      key={ms.date + '-' + ms.type + '-' + idx}
+                      style={{
+                        background: "#fff",
+                        border: "1.2px solid #A1C6EA",
+                        borderRadius: 8,
+                        padding: "14px 18px",
+                        marginBottom: 16,
+                        boxShadow: "0 2px 12px 0 #c6e3fa21",
+                      }}
+                    >
+                      <div style={{ fontWeight: 600, color: "#2196F3", marginBottom: 3 }}>
+                        {ms.date} &mdash; <span style={{ color: "#3F51B5", fontWeight: 500 }}>{ms.type}</span>
+                      </div>
+                      <div style={{ marginBottom: 3, color: "#07518e" }}>
+                        {ms.description}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </section>
         );
@@ -352,7 +537,65 @@ function App() {
               Your printable pet memory scrapbook. It updates automatically with your photos and milestones.
             </div>
             <div className="petbook-scrapbook-placeholder">
-              <span style={{color: "#999"}}>Scrapbook preview and print/export controls go here.</span>
+              {/* Scrapbook: Show all milestones and photos */}
+              <div style={{ marginBottom: 28 }}>
+                <h3 style={{ color: "#A1C6EA", fontWeight: 600, fontSize: 19, margin: "10px 0 8px 0" }}>
+                  All Milestones
+                </h3>
+                {milestones.length === 0 ? (
+                  <span style={{ color: "#bbb" }}>No milestones yet.</span>
+                ) : (
+                  <ul style={{ padding: 0, margin: 0, listStyle: "none" }}>
+                    {[...milestones].sort((a, b) => a.date > b.date ? 1 : -1).map((ms, idx) => (
+                      <li
+                        key={ms.date + '-' + ms.type + '-' + idx}
+                        style={{
+                          background: "#F7FAFF",
+                          border: "1.2px solid #A1C6EA",
+                          borderRadius: 8,
+                          padding: "12px 18px",
+                          marginBottom: 10,
+                          color: "#38454f"
+                        }}
+                      >
+                        <strong style={{ color: "#2196F3" }}>{ms.type}</strong> ({ms.date}):<br />
+                        <span style={{ color: "#2e4153" }}>{ms.description}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              <div>
+                <h3 style={{ color: "#F7C59F", fontWeight: 600, fontSize: 19, margin: "10px 0 8px 0" }}>
+                  All Photos
+                </h3>
+                {photos.length === 0 ? (
+                  <span style={{ color: "#bbb" }}>No photos uploaded yet.</span>
+                ) : (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+                    {photos.map(photo => (
+                      <img
+                        key={photo.key}
+                        src={photo.src}
+                        alt="scrapbook-upload"
+                        style={{
+                          width: 90,
+                          height: 90,
+                          objectFit: "cover",
+                          borderRadius: "8px",
+                          border: "1px solid #eee",
+                          background: "#f8f8f8",
+                        }}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div style={{ marginTop: 26 }}>
+                <span style={{ color: "#999" }}>
+                  Scrapbook preview and print/export controls go here.
+                </span>
+              </div>
             </div>
           </section>
         );
